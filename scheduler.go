@@ -35,6 +35,20 @@ func (scheduler *Scheduler) RunAfter(duration time.Duration, function Function, 
 	return scheduler.RunAt(time.Now().Add(duration), function, params...)
 }
 
+func (scheduler *Scheduler) RunEvery(runEvery time.Duration, runUntil time.Time, function Function, params ...Param) (string, error) {
+	funcMeta, err := scheduler.funcRegistry.Add(function)
+	if err != nil {
+		return "", err
+	}
+
+	task := NewTask(funcMeta, params)
+	task.SetInterval(runEvery, runUntil)
+	scheduler.tasks[task.TaskID] = task
+
+	go task.Run()
+	return task.TaskID, nil
+}
+
 func (scheduler *Scheduler) Cancel(taskID string) error {
 	task, found := scheduler.tasks[taskID]
 	if !found {
@@ -44,6 +58,14 @@ func (scheduler *Scheduler) Cancel(taskID string) error {
 	task.Stop()
 	delete(scheduler.tasks, taskID)
 	return nil
+}
+
+func (scheduler *Scheduler) Clear() {
+	for _, task := range scheduler.tasks {
+		task.Stop()
+		delete(scheduler.tasks, task.TaskID)
+	}
+	scheduler.funcRegistry = NewFuncRegistry()
 }
 
 func (scheduler *Scheduler) Reschedule(taskID string, time time.Time) error {
