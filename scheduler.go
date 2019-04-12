@@ -24,7 +24,7 @@ func (scheduler *Scheduler) RunAt(time time.Time, function Function, params ...P
 	}
 
 	task := NewTask(funcMeta, params)
-	task.SetTime(time)
+	task.SetNextRun(time)
 	scheduler.tasks[task.TaskID] = task
 
 	go task.Run()
@@ -60,7 +60,13 @@ func (scheduler *Scheduler) Cancel(taskID string) error {
 	return nil
 }
 
-func (scheduler *Scheduler) Clear() {
+// func (scheduler *Scheduler) ClearExpired() {
+// 	for _, task := range scheduler.tasks {
+// 		delete(scheduler.tasks, task.TaskID)
+// 	}
+// }
+
+func (scheduler *Scheduler) ClearAll() {
 	for _, task := range scheduler.tasks {
 		task.Stop()
 		delete(scheduler.tasks, task.TaskID)
@@ -75,7 +81,7 @@ func (scheduler *Scheduler) Reschedule(taskID string, time time.Time) error {
 	}
 
 	task.Stop()
-	task.SetTime(time)
+	task.SetNextRun(time)
 
 	go task.Run()
 	return nil

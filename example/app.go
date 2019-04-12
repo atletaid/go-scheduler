@@ -21,7 +21,7 @@ func main() {
 
 	r.GET("/every", func(c *gin.Context) {
 		runEvery := 5 * time.Second
-		runUntil := time.Now().Add(30 * time.Second)
+		runUntil := time.Now().Add(60 * time.Second)
 		msg := c.Query("msg")
 		taskID, _ := s.RunEvery(runEvery, runUntil, PrintMessage, msg)
 		c.String(200, fmt.Sprintf("Task %v scheduled", taskID))

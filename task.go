@@ -7,18 +7,16 @@ import (
 	"time"
 )
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const charsetLength = len(charset)
 
 var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))
 
 type Schedule struct {
-	Timer         *time.Timer
-	RunAt         time.Time
-	IsRunInterval bool
-	RunEvery      time.Duration
-	RunUntil      time.Time
+	Timer    *time.Timer
+	RunEvery time.Duration
+	RunUntil time.Time
 }
 
 type Task struct {
@@ -41,17 +39,18 @@ func NewTask(function FunctionMeta, params []Param) *Task {
 	}
 }
 
-func (task *Task) SetTime(runAt time.Time) {
-	task.RunAt = runAt
+func (task *Task) SetNextRun(runAt time.Time) {
 	task.Timer = time.NewTimer(runAt.Sub(time.Now()))
 }
 
+func (task *Task) SetIntervalNextRun() {
+	task.Timer = time.NewTimer(task.RunEvery)
+}
+
 func (task *Task) SetInterval(runEvery time.Duration, runUntil time.Time) {
-	task.RunAt = time.Now().Add(runEvery)
-	task.Timer = time.NewTimer(task.RunAt.Sub(time.Now()))
-	task.IsRunInterval = true
 	task.RunEvery = runEvery
 	task.RunUntil = runUntil
+	task.SetIntervalNextRun()
 }
 
 func (task *Task) Run() {
@@ -63,8 +62,8 @@ func (task *Task) Run() {
 	}
 	function.Call(params)
 
-	if task.IsRunInterval && (time.Now().Before(task.RunUntil.Add(time.Second))) {
-		task.SetTime(time.Now().Add(task.RunEvery))
+	if time.Now().Before(task.RunUntil.Add(time.Second)) {
+		task.SetIntervalNextRun()
 		task.Run()
 	}
 }
