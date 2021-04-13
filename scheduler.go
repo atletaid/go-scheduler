@@ -7,27 +7,23 @@ import (
 
 type Scheduler struct {
 	funcRegistry *FuncRegistry
-	tasks        map[string]*Task
 }
 
 func NewScheduler() *Scheduler {
 	return &Scheduler{
 		funcRegistry: NewFuncRegistry(),
-		tasks:        make(map[string]*Task),
 	}
 }
 
-func (scheduler *Scheduler) RunAt(time time.Time, function Function, params ...Param) (string, error) {
+func (scheduler *Scheduler) RunAt(runAt time.Time, function Function, params ...Param) (string, error) {
 	funcMeta, err := scheduler.funcRegistry.Add(function)
 	if err != nil {
 		return "", err
 	}
 
-	task := NewTask(funcMeta, params)
-	task.SetNextRun(time)
-	scheduler.tasks[task.TaskID] = task
+	task := NewTask(funcMeta, params).SetRunAt(runAt)
+	RunSchedule(task)
 
-	go task.Run()
 	return task.TaskID, nil
 }
 
@@ -41,48 +37,49 @@ func (scheduler *Scheduler) RunEvery(runEvery time.Duration, runUntil time.Time,
 		return "", err
 	}
 
-	task := NewTask(funcMeta, params)
-	task.SetInterval(runEvery, runUntil)
-	scheduler.tasks[task.TaskID] = task
+	task := NewTask(funcMeta, params).SetInterval(time.Now(), runEvery, runUntil)
+	RunSchedule(task)
 
-	go task.Run()
 	return task.TaskID, nil
 }
 
-func (scheduler *Scheduler) Cancel(taskID string) error {
-	task, found := scheduler.tasks[taskID]
-	if !found {
-		return fmt.Errorf("Task %v not found", taskID)
-	}
-
-	task.Stop()
-	delete(scheduler.tasks, taskID)
-	return nil
+func (scheduler *Scheduler) GetAllScheduler() {
+	return
 }
 
-// func (scheduler *Scheduler) ClearExpired() {
-// 	for _, task := range scheduler.tasks {
-// 		delete(scheduler.tasks, task.TaskID)
-// 	}
-// }
+func (scheduler *Scheduler) Stop(taskID string) error {
+	for _, worker := range workers {
+		if _, exists := worker.Tasks[taskID]; exists {
+			delete(worker.Tasks, taskID)
+
+			if len(worker.Tasks) == 0 {
+				worker.Timer.Stop()
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Task %v not found", taskID)
+}
 
 func (scheduler *Scheduler) ClearAll() {
-	for _, task := range scheduler.tasks {
-		task.Stop()
-		delete(scheduler.tasks, task.TaskID)
-	}
-	scheduler.funcRegistry = NewFuncRegistry()
+	// for _, task := range scheduler.tasks {
+	// 	task.Stop()
+	// 	delete(scheduler.tasks, task.TaskID)
+	// }
+	// scheduler.funcRegistry = NewFuncRegistry()
 }
 
 func (scheduler *Scheduler) Reschedule(taskID string, time time.Time) error {
-	task, found := scheduler.tasks[taskID]
-	if !found {
-		return fmt.Errorf("Task %v not found", taskID)
-	}
+	// task, found := scheduler.tasks[taskID]
+	// if !found {
+	// 	return fmt.Errorf("Task %v not found", taskID)
+	// }
 
-	task.Stop()
-	task.SetNextRun(time)
+	// task.Stop()
+	// task.SetNextRun(time)
 
-	go task.Run()
+	// go task.Run()
 	return nil
 }

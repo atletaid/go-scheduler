@@ -29,7 +29,7 @@ func main() {
 
 	r.GET("/stop/:id", func(c *gin.Context) {
 		taskID := c.Param("id")
-		if err := s.Cancel(taskID); err != nil {
+		if err := s.Stop(taskID); err != nil {
 			c.String(200, fmt.Sprint(err))
 		} else {
 			c.String(200, fmt.Sprintf("Task %v stopped", taskID))

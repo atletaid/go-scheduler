@@ -14,7 +14,7 @@ var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))
 
 type Schedule struct {
-	Timer    *time.Timer
+	RunAt    time.Time
 	RunEvery time.Duration
 	RunUntil time.Time
 }
@@ -39,22 +39,23 @@ func NewTask(function FunctionMeta, params []Param) *Task {
 	}
 }
 
-func (task *Task) SetNextRun(runAt time.Time) {
-	task.Timer = time.NewTimer(runAt.Sub(time.Now()))
+func (task *Task) SetRunAt(runAt time.Time) *Task {
+	task.Schedule = Schedule{
+		RunAt: runAt,
+	}
+	return task
 }
 
-func (task *Task) SetIntervalNextRun() {
-	task.Timer = time.NewTimer(task.RunEvery)
-}
-
-func (task *Task) SetInterval(runEvery time.Duration, runUntil time.Time) {
-	task.RunEvery = runEvery
-	task.RunUntil = runUntil
-	task.SetIntervalNextRun()
+func (task *Task) SetInterval(runAt time.Time, runEvery time.Duration, runUntil time.Time) *Task {
+	task.Schedule = Schedule{
+		RunAt:    runAt,
+		RunEvery: runEvery,
+		RunUntil: runUntil,
+	}
+	return task
 }
 
 func (task *Task) Run() {
-	<-task.Timer.C
 	function := reflect.ValueOf(task.Func.function)
 	params := make([]reflect.Value, len(task.Params))
 	for i, param := range task.Params {
@@ -63,11 +64,7 @@ func (task *Task) Run() {
 	function.Call(params)
 
 	if time.Now().Before(task.RunUntil.Add(time.Second)) {
-		task.SetIntervalNextRun()
-		task.Run()
+		task.RunAt = time.Now().Add(task.RunEvery)
+		RunSchedule(task)
 	}
-}
-
-func (task *Task) Stop() {
-	task.Timer.Stop()
 }
